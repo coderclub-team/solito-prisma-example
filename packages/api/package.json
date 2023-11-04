@@ -1,0 +1,15 @@
+{
+  "name": "@acme/api",
+  "packageManager": "yarn@3.4.1",
+  "dependencies": {
+    "@prisma/client": "^5.4.2",
+    "@trpc/server": "^10.40.0",
+    "db": "*",
+    "next-auth": "^4.23.2",
+    "superjson": "^1.13.3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "trpc-playground": "^1.0.4"
+  }
+}

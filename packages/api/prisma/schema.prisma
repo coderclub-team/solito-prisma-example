@@ -1,0 +1,494 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+
+}
+
+model task {
+  id        String   @id @default(cuid())
+  text      String
+  completed Boolean  @default(false)
+  createdAt DateTime @unique @default(now())
+}
+
+model addresses {
+  id                                           String     @id @default(cuid())
+  door_no                                      String?
+  floor_no                                     String?
+  apartment                                    String?
+  street                                       String
+  city                                         String
+  state                                        String
+  zip                                          String
+  name                                         String?
+  email                                        String?
+  phone                                        String?
+  customer_id                                  String?    @unique
+  hub_id                                       String?    @unique
+  latitude                                     Float?
+  longitude                                    Float?
+  created_at                                   DateTime   @default(now())
+  updated_at                                   DateTime
+  deleted_at                                   DateTime?
+  created_by                                   String?
+  updated_by                                   String?
+  deleted_by                                   String?
+  customers                                    customers? @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  hubs                                         hubs?      @relation(fields: [hub_id], references: [id], onDelete: Cascade)
+  orders_orders_billing_address_idToaddresses  orders[]   @relation("orders_billing_address_idToaddresses")
+  orders_orders_shipping_address_idToaddresses orders[]   @relation("orders_shipping_address_idToaddresses")
+}
+
+model coupons {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  amount     Decimal   @default(0.00) @db.Decimal(10, 2)
+  expires_at DateTime?
+  min_amount Decimal   @default(0.00) @db.Decimal(10, 2)
+  orders     orders[]  @relation("OrderCoupon")
+}
+
+model customers {
+  id                     String                @id @default(cuid())
+  phone_number           String                @unique
+  email                  String?               @unique
+  name                   String?
+  password               String?
+  created_at             DateTime              @default(now())
+  updated_at             DateTime
+  deleted_at             DateTime?
+  created_by             String?
+  updated_by             String?
+  deleted_by             String?
+  hub_id                 String?
+  is_email_verified      Boolean               @default(false)
+  is_phone_verified      Boolean               @default(false)
+  is_active              Boolean               @default(true)
+  is_delete_requested    Boolean               @default(false)
+  is_on_vacation         Boolean               @default(false)
+  vacation_start_date    DateTime?
+  vacation_end_date      DateTime?
+  delivery_preference_id String?
+  is_cod_allowed         Boolean               @default(true)
+  addresses              addresses?
+  delivery_preferences   delivery_preferences? @relation(fields: [delivery_preference_id], references: [id])
+  hubs                   hubs?                 @relation(fields: [hub_id], references: [id])
+  one_time_passwords     one_time_passwords?
+  orders                 orders[]
+  sessions               sessions?
+  subscriptions          subscriptions[]
+  wallet_registries      wallet_registries?
+
+  @@index([delivery_preference_id], map: "customers_delivery_preference_id_fkey")
+  @@index([hub_id], map: "customers_hub_id_fkey")
+}
+
+model delivery_preferences {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  customers   customers[]
+}
+
+model delivery_time_slots {
+  id            String          @id @default(cuid())
+  start_time    String
+  end_time      String
+  subscriptions subscriptions[]
+}
+
+model dimention {
+  id               String             @id @default(cuid())
+  length           Decimal?           @default(0.0) @db.Decimal(10, 1)
+  width            Decimal?           @default(0.0) @db.Decimal(10, 1)
+  height           Decimal?           @default(0.0) @db.Decimal(10, 1)
+  unit             String?
+  product_variants product_variants[]
+  products         products[]
+}
+
+model files {
+  id            String          @id @default(cuid())
+  name          String?
+  url           String
+  products      products[]
+  subscriptions subscriptions[]
+}
+
+model hubs {
+  id         String      @id @default(cuid())
+  name       String
+  created_at DateTime    @default(now())
+  updated_at DateTime
+  deleted_at DateTime?
+  created_by String?
+  updated_by String?
+  deleted_by String?
+  addresses  addresses?
+  customers  customers[]
+}
+
+model metas {
+  id    String @id
+  key   String @unique
+  value String
+}
+
+model one_time_passwords {
+  id          String     @id @default(cuid())
+  customer_id String?    @unique
+  otp         String
+  otp_type    String
+  otp_expiry  DateTime
+  is_used     Boolean    @default(false)
+  updated_at  DateTime
+  customers   customers? @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+}
+
+model order_items {
+  id               String            @id @default(cuid())
+  order_id         String
+  item_id          String
+  item_variant_id  String?
+  quantity         Int               @default(1)
+  subtotal         Decimal           @default(0.00) @db.Decimal(10, 2)
+  total            Decimal           @default(0.00) @db.Decimal(10, 2)
+  products         products          @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  product_variants product_variants? @relation(fields: [item_variant_id], references: [id])
+  orders           orders            @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([item_id], map: "order_items_item_id_fkey")
+  @@index([item_variant_id], map: "order_items_item_variant_id_fkey")
+  @@index([order_id], map: "order_items_order_id_fkey")
+}
+
+model orders {
+  id                                              String        @id @default(cuid())
+  currency                                        String        @default("INR")
+  billing_address_id                              String
+  shipping_address_id                             String
+  payment_method                                  String?
+  transaction_id                                  String?       @unique
+  discount_total                                  Decimal       @default(0.00) @db.Decimal(10, 2)
+  shipping_total                                  Decimal       @default(0.00) @db.Decimal(10, 2)
+  prices_include_tax                              Boolean       @default(true)
+  total                                           Decimal       @default(0.00) @db.Decimal(10, 2)
+  customer_id                                     String?
+  date_paid                                       DateTime?
+  date_completed                                  DateTime?
+  cart_hash                                       String?
+  status                                          orders_status @default(PENDING)
+  created_at                                      DateTime      @default(now())
+  updated_at                                      DateTime
+  deleted_at                                      DateTime?
+  order_items                                     order_items[]
+  addresses_orders_billing_address_idToaddresses  addresses     @relation("orders_billing_address_idToaddresses", fields: [billing_address_id], references: [id])
+  customers                                       customers?    @relation(fields: [customer_id], references: [id])
+  addresses_orders_shipping_address_idToaddresses addresses     @relation("orders_shipping_address_idToaddresses", fields: [shipping_address_id], references: [id])
+  refunds                                         refunds?
+  shippings                                       shippings?
+  coupons                                         coupons[]     @relation("OrderCoupon")
+
+  @@index([billing_address_id], map: "orders_billing_address_id_fkey")
+  @@index([customer_id], map: "orders_customer_id_fkey")
+  @@index([shipping_address_id], map: "orders_shipping_address_id_fkey")
+}
+
+model posts {
+  id        String   @id @default(cuid())
+  title     String   @db.VarChar(255)
+  content   String
+  category  String
+  image     String
+  published Boolean  @default(false)
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  users     users    @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "posts_userId_fkey")
+}
+
+model product_categories {
+  id                       String               @id @default(cuid()) 
+  name                     String
+  description              String?
+  image_url                String?
+  count                    Int?                 @default(0)
+  parent_id                String?
+  sort_order               Int?                 @default(0)
+  product_categories       product_categories?  @relation("product_categoriesToproduct_categories", fields: [parent_id], references: [id])
+  other_product_categories product_categories[] @relation("product_categoriesToproduct_categories")
+  products                 products[]
+
+  @@index([parent_id], map: "product_categories_parent_id_fkey")
+}
+
+model product_variants {
+  id                 String          @id @default(cuid())
+  stock              Int?            @default(0)
+  sku                String?
+  price              Decimal         @default(0.00) @db.Decimal(10, 2)
+  regular_price      Decimal         @default(0.00) @db.Decimal(10, 2)
+  sale_price         Decimal?        @default(0.00) @db.Decimal(10, 2)
+  taxable            Boolean         @default(false)
+  tax_class          String?
+  tax_status         String?
+  manage_stock       Boolean         @default(true)
+  stock_quantity     Int?            @default(0)
+  in_stock           Boolean         @default(true)
+  backorders_allowed Boolean         @default(false)
+  backordered        Boolean         @default(true)
+  purchaseable       Boolean         @default(true)
+  featured           Boolean         @default(false)
+  on_sale            Boolean         @default(false)
+  sale_starts_at     DateTime?
+  sale_ends_at       DateTime?
+  weight             Decimal?        @default(0.000) @db.Decimal(10, 3)
+  dimension_id       String?
+  bundle_sizes       Int             @default(1)
+  product_id         String
+  size               String?
+  default            Boolean         @default(false)
+  order_items        order_items[]
+  dimention          dimention?      @relation(fields: [dimension_id], references: [id])
+  products           products        @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  subscriptions      subscriptions[]
+
+  @@index([dimension_id], map: "product_variants_dimension_id_fkey")
+  @@index([product_id], map: "product_variants_product_id_fkey")
+}
+
+model products {
+  id                 String              @id @default(cuid())
+  title              String
+  description        String?
+  image_id           String?
+  type               products_type       @default(SIMPLE)
+  status             products_status     @default(DRAFT)
+  reviews_allowed    Boolean             @default(true)
+  average_rating     Decimal?            @default(0.00) @db.Decimal(10, 2)
+  rating_count       Int?                @default(0)
+  category_id        String?
+  size               String?
+  sku                String?
+  regular_price      Decimal             @default(0.00) @db.Decimal(10, 2)
+  sale_price         Decimal?            @default(0.00) @db.Decimal(10, 2)
+  on_sale            Boolean             @default(false)
+  sale_starts_at     DateTime?
+  sale_ends_at       DateTime?
+  taxable            Boolean             @default(false)
+  tax_class          String?
+  tax_status         String?
+  manage_stock       Boolean             @default(true)
+  stock_quantity     Int?                @default(0)
+  in_stock           Boolean             @default(true)
+  backorders_allowed Boolean             @default(false)
+  backordered        Boolean             @default(true)
+  purchaseable       Boolean             @default(true)
+  featured           Boolean             @default(false)
+  weight             Decimal?            @default(0.000) @db.Decimal(10, 3)
+  dimension_id       String?
+  bundle_sizes       Int                 @default(1)
+  attributes         String?
+  created_at         DateTime            @default(now())
+  updated_at         DateTime
+  deleted_at         DateTime?
+  created_by         String?
+  updated_by         String?
+  deleted_by         String?
+  order_items        order_items[]
+  product_variants   product_variants[]
+  product_categories product_categories? @relation(fields: [category_id], references: [id])
+  dimention          dimention?          @relation(fields: [dimension_id], references: [id])
+  files              files?              @relation(fields: [image_id], references: [id], onDelete: Cascade)
+  subscriptions      subscriptions[]
+
+  @@index([category_id], map: "products_category_id_fkey")
+  @@index([dimension_id], map: "products_dimension_id_fkey")
+  @@index([image_id], map: "products_image_id_fkey")
+}
+
+model refunds {
+  id       String  @id @default(cuid())
+  reason   String
+  total    Decimal @default(0.00) @db.Decimal(10, 2)
+  order_id String  @unique
+  orders   orders  @relation(fields: [order_id], references: [id], onDelete: Cascade)
+}
+
+model sessions {
+  id            String     @id @default(cuid())
+  device_id     String?
+  last_login    DateTime?
+  last_logout   DateTime?
+  last_ip       String?
+  last_device   String?
+  last_location String?
+  customer_id   String?    @unique
+  created_at    DateTime   @default(now())
+  updated_at    DateTime
+  deleted_at    DateTime?
+  created_by    String?
+  updated_by    String?
+  deleted_by    String?
+  test_field    String     @default("test")
+  customers     customers? @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+}
+
+model shippings {
+  id              String  @id @default(cuid())
+  shipping_method String
+  shipping_id     String  @unique
+  total           Decimal @default(0.00) @db.Decimal(10, 2)
+  order_id        String  @unique
+  orders          orders  @relation(fields: [order_id], references: [id], onDelete: Cascade)
+}
+
+model subscriptions {
+  id                     String @id @default(cuid())
+  frequency_type         subscriptions_frequency_type
+  start_date             DateTime
+  end_date               DateTime?
+  sunday                 Int?
+  monday                 Int?
+  tuesday                Int?
+  wednesday              Int?
+  thursday               Int?
+  friday                 Int?
+  saturday               Int?
+  delivery_intervals     Int?
+  delivery_time_slot_id  String?
+  delivery_notes         String?
+  delivery_voice_note_id String?
+  product_id             String
+  variant_id             String?
+  customer_id            String?
+  created_at             DateTime                     @default(now())
+  updated_at             DateTime
+  deleted_at             DateTime?
+  created_by             String?
+  updated_by             String?
+  deleted_by             String?
+  status                 subscriptions_status         @default(DRAFT)
+  customers              customers?                   @relation(fields: [customer_id], references: [id])
+  delivery_time_slots    delivery_time_slots?         @relation(fields: [delivery_time_slot_id], references: [id])
+  files                  files?                       @relation(fields: [delivery_voice_note_id], references: [id])
+  products               products                     @relation(fields: [product_id], references: [id])
+  product_variants       product_variants?            @relation(fields: [variant_id], references: [id])
+
+  @@index([customer_id], map: "subscriptions_customer_id_fkey")
+  @@index([delivery_time_slot_id], map: "subscriptions_delivery_time_slot_id_fkey")
+  @@index([delivery_voice_note_id], map: "subscriptions_delivery_voice_note_id_fkey")
+  @@index([product_id], map: "subscriptions_product_id_fkey")
+  @@index([variant_id], map: "subscriptions_variant_id_fkey")
+}
+
+model users {
+  id        String      @id @default(cuid())
+  name      String?      @db.VarChar(255)
+  phone     String     @unique
+  email     String?      @unique
+  photo     String?     @default("default.png")
+  is_phone_verified  Boolean?    @default(false)
+  is_email_verified  Boolean?    @default(false)
+  password  String?
+  role      users_role? @default(user)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime?
+  provider  String?
+  posts     posts[]
+}
+
+model wallet_registries {
+  id                  String                @id @default(cuid())
+  wallet_id           String?               @unique
+  customer_id         String?               @unique
+  balance             Decimal?              @default(0.00) @db.Decimal(10, 2)
+  created_at          DateTime              @default(now())
+  updated_at          DateTime
+  deleted_at          DateTime?
+  created_by          String?
+  updated_by          String?
+  deleted_by          String?
+  customers           customers?            @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  wallet_transactions wallet_transactions[]
+}
+
+model wallet_transactions {
+  id                 String                               @id @default(cuid())
+  transaction_id     String?                              @unique
+  wallet_registry_id String
+  transaction_type   wallet_transactions_transaction_type
+  transaction_amount Decimal                              @default(0.00) @db.Decimal(10, 2)
+  payment_id         String                               @unique
+  payment_type       String?
+  created_at         DateTime                             @default(now())
+  updated_at         DateTime
+  deleted_at         DateTime?
+  created_by         String?
+  updated_by         String?
+  deleted_by         String?
+  status             wallet_transactions_status           @default(DRAFT)
+  wallet_registries  wallet_registries                    @relation(fields: [wallet_registry_id], references: [id], onDelete: Cascade)
+
+  @@index([wallet_registry_id], map: "wallet_transactions_wallet_registry_id_fkey")
+}
+
+enum subscriptions_frequency_type {
+  daily
+  interval
+  flexible
+}
+
+enum wallet_transactions_transaction_type {
+  CREDIT
+  DEBIT
+}
+
+enum products_type {
+  SIMPLE
+  VARIABLE
+}
+
+enum products_status {
+  PUBLISH
+  DRAFT
+  TRASH
+}
+
+enum users_role {
+  user
+  admin
+}
+
+enum wallet_transactions_status {
+  PUBLISH
+  DRAFT
+  TRASH
+}
+
+enum orders_status {
+  PENDING_PAYMENT
+  FAILED
+  PROCESSING
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+  REFUNDED
+  PENDING
+  BACKORDER
+  PAYMENT_FAILED
+  PAYMENT_REVIEW
+  COMPLETED_AND_PAID
+}
+
+enum subscriptions_status {
+  PUBLISH
+  DRAFT
+  TRASH
+}

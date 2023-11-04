@@ -1,0 +1,33 @@
+{
+  "name": "solito-expo-router",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/react": "~18.2.21",
+    "@types/react-native": "^0.72.2",
+    "eslint": "^8.21.0",
+    "turbo": "^1.4.2",
+    "typescript": "^5.2.2"
+  },
+  "scripts": {
+    "native": "cd apps/expo && yarn start",
+    "web": "cd apps/next && yarn next",
+    "prisma:init": "cd packages/api && prisma init --url mysql://root:@localhost:3306/daily",
+    "prisma:pull": "cd packages/api && prisma db pull",
+    "prisma:generate": "cd packages/api && prisma generate",
+    "prisma:migrate": "cd packages/api && prisma migrate dev",
+    "prisma:studio": "cd packages/api && prisma studio"
+  },
+  "resolutions": {
+    "metro": "~0.76.7",
+    "metro-resolver": "~0.76.7"
+  },
+  "nohoist": [
+    "**/expo-router",
+    "**/expo-router/**"
+  ],
+  "packageManager": "yarn@3.4.1"
+}
